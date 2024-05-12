@@ -72,7 +72,7 @@ Map metro spb — это приложение для поиска оптимал
 
 2. **Компиляция проекта:**
    
-   gcc main.c `pkg-config --cflags gtk+-3.0 --libs gtk+-3.0` -lsqlite3 -o map_metro_spb
+   gcc main.c `pkg-config --cflags --libs gtk+-3.0` -lsqlite3 -o map_metro_spb
    
 
 3. **Запуск приложения:**
