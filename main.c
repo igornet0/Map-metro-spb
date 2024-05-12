@@ -7,6 +7,7 @@
 #include <cairo.h>
 #include <gtk/gtk.h>
 #include "header.h"
+#include <glib.h>
 
 #define MAX_INT 2147483647
 
@@ -46,7 +47,6 @@ void findFastestPath(Vertex *current, Vertex *destination, int currentTime, int 
         }
     }
 
-
     visited[current->index] = 0;
     *path = g_list_remove(*path, current);
 }
@@ -65,6 +65,7 @@ Vertex *create_vertex(int index, char *name, GdkRGBA color, int x, int y, int ti
     v->transitions = NULL;
     v->num_edges = 0;
     v->num_transitions = 0;
+    v->last_index = -1;
     return v;
 }
 
@@ -174,7 +175,7 @@ static gboolean draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data) {
     return TRUE;
 }
 
-static int is_transition(Vertex *v1, Vertex *v2) {
+static bool is_transition(Vertex *v1, Vertex *v2) {
     for (int i = 0; i < v1->num_transitions; i++) {
         Transition *t = v1->transitions[i];
         if (t->to == v2) {
@@ -184,46 +185,72 @@ static int is_transition(Vertex *v1, Vertex *v2) {
     return false;
 }
 
-static gboolean on_mouse_press(GtkWidget *widget, GdkEventButton *event, gpointer data) {
-    if (event->button == GDK_BUTTON_PRIMARY) {
-        Vertex **vertices = (Vertex **)data;
+void transition_size(Vertex *v) {
+    for (int i = 0; i < v->num_transitions; i++) {
+        Transition *t = v->transitions[i];
+        t->from->size = 10;
+        t->to->size = 10;
+    }
+    v->size = 15;
+}
 
-        // Находим все вершины в радиусе клика
-        for (int i = 0; i < 69; i++) {
-            Vertex *v = vertices[i];
-            double distance = sqrt(pow(v->x - event->x, 2) + pow(v->y - event->y, 2));
-            if (distance < 10) {
-                if (selected_vertex_start == NULL) {
-                    selected_vertex_start = v;
-                    selected_vertex_start->size = 15; // Увеличиваем размер выбранной вершины
-                    break;
-                }else if(v->size == 15) {
-                    continue;
-                } else {
-                    if (is_transition(selected_vertex_start, v)) {
-                        //selected_vertex_start->size = 10; 
-                        selected_vertex_start = v;
-                        selected_vertex_start->size = 15; // Увеличиваем размер выбранной вершины
-                    } else {
-                        selected_vertex_end = v;
-                        selected_vertex_end->size = 15; 
-                    }
-                    break;
+// Функция для получения вершины по координатам
+Vertex *selectVertex(Vertex **vertices, int x, int y) {
+    const double threshold = 10.0; // Радиус, в пределах которого ищем вершину
+
+    // Поиск вершины в данной точке
+    for (int i = 0; i < 69; i++) {
+        Vertex *v = vertices[i];
+        double distance = sqrt(pow(v->x - x, 2) + pow(v->y - y, 2));
+        if (distance <= threshold) {
+            if (v->last_index == -1){
+                v->last_index = 0;
+                return v;
+            } else {
+                if (v->last_index == v->num_transitions) {
+                    v->last_index = -1;
+                    return NULL;
                 }
+                v->transitions[v->last_index]->to->size = 15;
+                ++v->last_index;
+                return v->transitions[v->last_index-1]->to;
             }
         }
-        gtk_widget_queue_draw(widget);  // Перерисовка виджета
-        if(selected_vertex_start != NULL && selected_vertex_end != NULL) {
-            find_path(selected_vertex_start, selected_vertex_end);
-            printf("Start: %s, End: %s\n", selected_vertex_start->name, selected_vertex_end->name);
-            for (int i=0; i<selected_vertex_start->num_transitions; i++) {
-                Transition *t = selected_vertex_start->transitions[i];
-                t->to->size = 10;
-                t->from->size = 10;
-            }
+    }
+    return NULL;
+}
+
+static gboolean on_mouse_press(GtkWidget *widget, GdkEventButton *event, gpointer data) {
+    Vertex **vertices = (Vertex **)data;
+    Vertex *selected_vertex = selectVertex(vertices, event->x, event->y);
+    if (event->button == GDK_BUTTON_PRIMARY) {
+        if (selected_vertex_start != NULL) selected_vertex_start->size = 10;
+        if (selected_vertex != NULL) {
+            selected_vertex->size = 15;
+            selected_vertex_start = selected_vertex;
+        } else {
             selected_vertex_start = NULL;
+        } 
+
+    } else if (event->button == GDK_BUTTON_SECONDARY) {
+        if (selected_vertex != NULL) {
+            selected_vertex->size = 15;
+            selected_vertex_end = selected_vertex;
+        } else {
             selected_vertex_end = NULL;
         }
+    }
+    gtk_widget_queue_draw(widget);  // Перерисовка виджета
+    if(selected_vertex_start != NULL && selected_vertex_end != NULL) {
+        find_path(selected_vertex_start, selected_vertex_end);
+        printf("Start: %s, End: %s\n", selected_vertex_start->name, selected_vertex_end->name);
+        for (int i=0; i<selected_vertex_start->num_transitions; i++) {
+            Transition *t = selected_vertex_start->transitions[i];
+            t->to->size = 10;
+            t->from->size = 10;
+        }
+        selected_vertex_start = NULL;
+        selected_vertex_end = NULL;
     }
     return true;
 }
@@ -233,7 +260,15 @@ void find_path(Vertex *start, Vertex *end) {
     int min_time = MAX_INT;
     int *visited = (int *)calloc(69, sizeof(int));
 
+    gint64 start_time = g_get_monotonic_time(); // Засекаем время перед запуском алгоритма
+
     findFastestPath(start, end, 0, &min_time, visited, &path, &min_path);
+    
+    gint64 end_time = g_get_monotonic_time(); // Засекаем время после выполнения алгоритма
+    gint64 elapsed_time = end_time - start_time;
+
+    g_print("Время работы алгоритма: %lld микросекунд\n", elapsed_time);
+
     free(visited);
 
     // Вывод результата в GUI
@@ -267,10 +302,7 @@ void find_path(Vertex *start, Vertex *end) {
     g_list_free(path);
 }
 
-int main(int argc, char **argv) {
-    // Создание массива вершин
-    Vertex *vertices[69]; // Указатель на массив вершин
-
+static void get_vertices_from_db(sqlite3 *db, Vertex **vertices) {
     // Определение цветов
     GdkRGBA colors[] = {
         {0.8, 0.0, 0.0, 1.0},  // Красный
@@ -279,31 +311,16 @@ int main(int argc, char **argv) {
         {0.9, 0.5, 0.0, 1.0},  // Оранжевый
         {0.5, 0.0, 0.5, 1.0}   // Фиолетовый
     };
-
-    sqlite3 *db;
-    char *err_msg = 0;
     sqlite3_stmt *res;
-
-    int rc = sqlite3_open("db.db", &db);
-    
-    if (rc != SQLITE_OK) {
-        
-        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        
-        return 1;
-    }
-    
     char *sql = "SELECT * FROM Station;";
 
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);    
+    int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);    
     
     if (rc != SQLITE_OK) {
         
         fprintf(stderr, "Failed to fetch data: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         
-        return 1;
     }    
 
     while ((rc = sqlite3_step(res)) == SQLITE_ROW) {
@@ -324,17 +341,20 @@ int main(int argc, char **argv) {
     if (rc != SQLITE_DONE) {
         fprintf(stderr, "Error in SQL execution: %s\n", sqlite3_errmsg(db));
     }
-    
-    sql = "SELECT * FROM Times;";
+    sqlite3_finalize(res);
+}
 
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);    
+static void get_edges_from_db(sqlite3 *db, Vertex **vertices) {
+    sqlite3_stmt *res;
+    char *sql = "SELECT * FROM Times;";
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);    
     
     if (rc != SQLITE_OK) {
         
         fprintf(stderr, "Failed to fetch data: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         
-        return 1;
     }    
 
     while ((rc = sqlite3_step(res)) == SQLITE_ROW) {
@@ -348,17 +368,20 @@ int main(int argc, char **argv) {
     if (rc != SQLITE_DONE) {
         fprintf(stderr, "Error in SQL execution: %s\n", sqlite3_errmsg(db));
     }
+    sqlite3_finalize(res);
+}
 
-    sql = "SELECT * FROM Transfers;";
+static void get_transitions_from_db(sqlite3 *db, Vertex **vertices) {
+    sqlite3_stmt *res;
+    char *sql = "SELECT * FROM Transfers;";
 
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);    
+    int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);    
     
     if (rc != SQLITE_OK) {
         
         fprintf(stderr, "Failed to fetch data: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         
-        return 1;
     }    
 
     while ((rc = sqlite3_step(res)) == SQLITE_ROW) {
@@ -371,8 +394,30 @@ int main(int argc, char **argv) {
     if (rc != SQLITE_DONE) {
         fprintf(stderr, "Error in SQL execution: %s\n", sqlite3_errmsg(db));
     }
-
     sqlite3_finalize(res);
+}
+
+int main(int argc, char **argv) {
+    // Создание массива вершин
+    Vertex *vertices[69]; // Указатель на массив вершин
+
+    sqlite3 *db;
+    char *err_msg = 0;
+
+    int rc = sqlite3_open("db.db", &db);
+    
+    if (rc != SQLITE_OK) {
+        
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        
+        return 1;
+    }
+    
+    get_vertices_from_db(db, vertices);
+    get_edges_from_db(db, vertices);
+    get_transitions_from_db(db, vertices);
+    
     sqlite3_close(db);
     gtk_init(&argc, &argv);
 
@@ -381,7 +426,7 @@ int main(int argc, char **argv) {
     GtkWidget *drawing_area = gtk_drawing_area_new();
 
     //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
-    gtk_window_set_title(GTK_WINDOW(window), "Graph Viewer");
+    gtk_window_set_title(GTK_WINDOW(window), "Metro SPB");
     gtk_window_set_default_size(GTK_WINDOW(window), 800, 700);
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
@@ -399,3 +444,4 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+

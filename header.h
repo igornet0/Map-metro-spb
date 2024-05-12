@@ -15,6 +15,7 @@ typedef struct _Vertex {
     Transition **transitions; // Список переходов
     int num_edges; // Количество рёбер
     int num_transitions; // Количество переходов
+    int last_index;
 } Vertex;
 
 typedef struct _Edge {
