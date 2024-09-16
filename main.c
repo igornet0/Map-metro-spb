@@ -465,8 +465,7 @@ int main(int argc, char **argv) {
 
     // Подключаем сигнал нажатия кнопки
     g_signal_connect(button, "clicked", G_CALLBACK(click_peak_button), NULL);
-    // Добавляем drawing_area в fixed контейнер
-    gtk_fixed_put(GTK_FIXED(fixed), drawing_area, 0, 0);
+   
     // Добавляем кнопку в fixed контейнер
     gtk_fixed_put(GTK_FIXED(fixed), button, 10, 250); // 10 пикселей от левого края и 250 от верхнего
 
@@ -474,6 +473,9 @@ int main(int argc, char **argv) {
     g_signal_connect(G_OBJECT(drawing_area), "button-press-event", G_CALLBACK(on_mouse_press), vertices);
 
     gtk_widget_set_events(drawing_area, gtk_widget_get_events(drawing_area) | GDK_BUTTON_PRESS_MASK);
+
+     // Добавляем drawing_area в fixed контейнер
+    gtk_fixed_put(GTK_FIXED(fixed), drawing_area, 0, 0);
 
     // Добавляем fixed контейнер в окно
     gtk_container_add(GTK_CONTAINER(window), fixed);
