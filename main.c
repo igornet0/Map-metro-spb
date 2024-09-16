@@ -37,22 +37,14 @@ void findFastestPath(Vertex *current, Vertex *destination, int currentTime, int 
         for (int i = 0; i < current->num_transitions; i++) {
             Transition *transition = current->transitions[i];
             if (!visited[transition->to->index]) {
-                float timetravel = currentTime + transition->time;
-                if (press_button){
-                    timetravel -= 1.5;
-                }
-                findFastestPath(transition->to, destination, timetravel, minTime, visited, path, min_path);
+                findFastestPath(transition->to, destination, currentTime + transition->time, minTime, visited, path, min_path);
             }
         }
         // Перебор всех ребер из текущей вершины
         for (int i = 0; i < current->num_edges; i++) {
             Edge *edge = current->edges[i];
             if (!visited[edge->to->index]) {
-                float timetravel = currentTime + edge->time;
-                if (press_button){
-                    timetravel -= 1.5;
-                }
-                findFastestPath(edge->to, destination, timetravel, minTime, visited, path, min_path);
+                findFastestPath(edge->to, destination, currentTime + edge->time, minTime, visited, path, min_path);
             }
         }
     }
@@ -283,6 +275,9 @@ void find_path(Vertex *start, Vertex *end) {
 
     // Вывод результата в GUI
     if (min_time != MAX_INT) {
+    	if (press_button){
+    	    min_time -= 2;
+    	}
         GString *path_str = g_string_new("");
         for (GList *l = min_path; l != NULL; l = l->next) {
             Vertex *v = l->data;
@@ -450,6 +445,8 @@ int main(int argc, char **argv) {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *drawing_area = gtk_drawing_area_new();
     GtkWidget *fixed = gtk_fixed_new(); // Создаем контейнер GtkFixed
+    
+    gtk_widget_set_size_request(drawing_area, 800, 700);
 
     GtkWidget *button = gtk_button_new_with_label("Част пик");
     GdkRGBA red;
@@ -465,10 +462,8 @@ int main(int argc, char **argv) {
 
     // Добавляем drawing_area в fixed контейнер
     gtk_fixed_put(GTK_FIXED(fixed), drawing_area, 0, 0);
-    
     // Добавляем кнопку в fixed контейнер
     gtk_fixed_put(GTK_FIXED(fixed), button, 10, 250); // 10 пикселей от левого края и 250 от верхнего
-    
     // Подключаем события рисования и нажатия мыши
     g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK(draw_callback), vertices);
     g_signal_connect(G_OBJECT(drawing_area), "button-press-event", G_CALLBACK(on_mouse_press), vertices);
@@ -476,7 +471,9 @@ int main(int argc, char **argv) {
     gtk_widget_set_events(drawing_area, gtk_widget_get_events(drawing_area) | GDK_BUTTON_PRESS_MASK);
 
     // Добавляем fixed контейнер в окно
+    gtk_container_add(GTK_CONTAINER(window), drawing_area);
     gtk_container_add(GTK_CONTAINER(window), fixed);
+  
 
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
