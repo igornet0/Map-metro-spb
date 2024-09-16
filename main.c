@@ -15,6 +15,8 @@ typedef struct _Edge Edge;
 typedef struct _Transition Transition;
 typedef struct _Vertex Vertex;
 
+static gboolean press_button = false;
+
 Vertex *selected_vertex_start = NULL;
 Vertex *selected_vertex_end = NULL;
 
@@ -35,14 +37,22 @@ void findFastestPath(Vertex *current, Vertex *destination, int currentTime, int 
         for (int i = 0; i < current->num_transitions; i++) {
             Transition *transition = current->transitions[i];
             if (!visited[transition->to->index]) {
-                findFastestPath(transition->to, destination, currentTime + transition->time, minTime, visited, path, min_path);
+                timetravel = currentTime + transition->time;
+                if (press_button){
+                    timetravel -= 1.5;
+                }
+                findFastestPath(transition->to, destination, timetravel, minTime, visited, path, min_path);
             }
         }
         // Перебор всех ребер из текущей вершины
         for (int i = 0; i < current->num_edges; i++) {
             Edge *edge = current->edges[i];
             if (!visited[edge->to->index]) {
-                findFastestPath(edge->to, destination, currentTime + edge->time, minTime, visited, path, min_path);
+                timetravel = currentTime + edge->time
+                if (press_button){
+                    timetravel -= 1.5;
+                }
+                findFastestPath(edge->to, destination, timetravel, minTime, visited, path, min_path);
             }
         }
     }
@@ -397,6 +407,22 @@ static void get_transitions_from_db(sqlite3 *db, Vertex **vertices) {
     sqlite3_finalize(res);
 }
 
+static void on_button_clicked(GtkWidget *widget, gpointer data) {
+    GdkRGBA color;
+    // Проверяем текущее состояние и меняем цвет
+    if (press_button) {
+        // Если кнопка зеленая, меняем на красный
+        gdk_rgba_parse(&color, "red");
+        press_button = FALSE; // Обновляем состояние
+    } else {
+        // Если кнопка красная, меняем на зеленый
+        gdk_rgba_parse(&color, "green");
+        press_button = TRUE; // Обновляем состояние
+    }
+    
+    gtk_widget_override_background_color(widget, GTK_STATE_NORMAL, &color);
+}
+
 int main(int argc, char **argv) {
     // Создание массива вершин
     Vertex *vertices[69]; // Указатель на массив вершин
@@ -425,10 +451,25 @@ int main(int argc, char **argv) {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *drawing_area = gtk_drawing_area_new();
 
+    // Создаем контейнер для размещения кнопки
+    GtkWidget *fixed = gtk_fixed_new();
+    gtk_container_add(GTK_CONTAINER(window), fixed);
+
+    GtkWidget *button = gtk_button_new_with_label("Част пик");
+    GdkRGBA red;
+    gdk_rgba_parse(&red, "red");
+    gtk_widget_override_background_color(button, GTK_STATE_NORMAL, &red);
+    
+    // Добавляем кнопку в нижний левый угол
+    gtk_fixed_put(GTK_FIXED(fixed), button, 10, 250); // 10 пикселей от левого края и 250 от верхнего
+
     //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     gtk_window_set_title(GTK_WINDOW(window), "Metro SPB");
     gtk_window_set_default_size(GTK_WINDOW(window), 800, 700);
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+
+    // Подключаем сигнал нажатия кнопки
+    g_signal_connect(button, "clicked", G_CALLBACK(click_peak_button), NULL);
 
     gtk_container_add(GTK_CONTAINER(window), drawing_area);
     g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK(draw_callback), vertices);
