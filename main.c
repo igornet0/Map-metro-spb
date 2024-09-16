@@ -451,17 +451,11 @@ int main(int argc, char **argv) {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *drawing_area = gtk_drawing_area_new();
 
-    // Создаем контейнер для размещения кнопки
-    GtkWidget *fixed = gtk_fixed_new();
-    gtk_container_add(GTK_CONTAINER(window), fixed);
-
     GtkWidget *button = gtk_button_new_with_label("Част пик");
     GdkRGBA red;
     gdk_rgba_parse(&red, "red");
     gtk_widget_override_background_color(button, GTK_STATE_NORMAL, &red);
     
-    // Добавляем кнопку в нижний левый угол
-    gtk_fixed_put(GTK_FIXED(fixed), button, 10, 250); // 10 пикселей от левого края и 250 от верхнего
 
     //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     gtk_window_set_title(GTK_WINDOW(window), "Metro SPB");
@@ -472,6 +466,9 @@ int main(int argc, char **argv) {
     g_signal_connect(button, "clicked", G_CALLBACK(click_peak_button), NULL);
 
     gtk_container_add(GTK_CONTAINER(window), drawing_area);
+    // Добавляем кнопку в нижний левый угол
+    gtk_fixed_put(GTK_FIXED(drawing_area), button, 10, 250); // 10 пикселей от левого края и 250 от верхнего
+    
     g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK(draw_callback), vertices);
     g_signal_connect(G_OBJECT(drawing_area), "button-press-event", G_CALLBACK(on_mouse_press), vertices);
 
