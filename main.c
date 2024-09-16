@@ -407,7 +407,7 @@ static void get_transitions_from_db(sqlite3 *db, Vertex **vertices) {
     sqlite3_finalize(res);
 }
 
-static void on_button_clicked(GtkWidget *widget, gpointer data) {
+static void click_peak_button(GtkWidget *widget, gpointer data) {
     GdkRGBA color;
     // Проверяем текущее состояние и меняем цвет
     if (press_button) {
