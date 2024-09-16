@@ -450,14 +450,13 @@ int main(int argc, char **argv) {
     // Создание окна и виджетов
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *drawing_area = gtk_drawing_area_new();
+    GtkWidget *fixed = gtk_fixed_new(); // Создаем контейнер GtkFixed
 
     GtkWidget *button = gtk_button_new_with_label("Част пик");
     GdkRGBA red;
     gdk_rgba_parse(&red, "red");
     gtk_widget_override_background_color(button, GTK_STATE_NORMAL, &red);
-    
 
-    //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     gtk_window_set_title(GTK_WINDOW(window), "Metro SPB");
     gtk_window_set_default_size(GTK_WINDOW(window), 800, 700);
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
@@ -465,17 +464,22 @@ int main(int argc, char **argv) {
     // Подключаем сигнал нажатия кнопки
     g_signal_connect(button, "clicked", G_CALLBACK(click_peak_button), NULL);
 
-    gtk_container_add(GTK_CONTAINER(window), drawing_area);
-    // Добавляем кнопку в нижний левый угол
-    gtk_fixed_put(GTK_FIXED(drawing_area), button, 10, 250); // 10 пикселей от левого края и 250 от верхнего
+    // Добавляем drawing_area в fixed контейнер
+    gtk_fixed_put(GTK_FIXED(fixed), drawing_area, 0, 0);
     
-    g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK(draw_callback), vertices);
-    g_signal_connect(G_OBJECT(drawing_area), "button-press-event", G_CALLBACK(on_mouse_press), vertices);
-
+    // Добавляем кнопку в fixed контейнер
+    gtk_fixed_put(GTK_FIXED(fixed), button, 10, 250); // 10 пикселей от левого края и 250 от верхнего
+    
+    // Подключаем события рисования и нажатия мыши
+    g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK(draw_callback), NULL);
+    g_signal_connect(G_OBJECT(drawing_area), "button-press-event", G_CALLBACK(on_mouse_press), NULL);
+    
     gtk_widget_set_events(drawing_area, gtk_widget_get_events(drawing_area) | GDK_BUTTON_PRESS_MASK);
 
-    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+    // Добавляем fixed контейнер в окно
+    gtk_container_add(GTK_CONTAINER(window), fixed);
 
+    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
     gtk_widget_show_all(window);
     gtk_main();
