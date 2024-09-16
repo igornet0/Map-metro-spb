@@ -470,9 +470,6 @@ int main(int argc, char **argv) {
     // Добавляем кнопку в fixed контейнер
     gtk_fixed_put(GTK_FIXED(fixed), button, 10, 250); // 10 пикселей от левого края и 250 от верхнего
 
-    gtk_container_add(GTK_CONTAINER(window), drawing_area);
-    // Добавляем кнопку в нижний левый угол
-
     g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK(draw_callback), vertices);
     g_signal_connect(G_OBJECT(drawing_area), "button-press-event", G_CALLBACK(on_mouse_press), vertices);
 
