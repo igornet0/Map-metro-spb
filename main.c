@@ -37,7 +37,7 @@ void findFastestPath(Vertex *current, Vertex *destination, int currentTime, int 
         for (int i = 0; i < current->num_transitions; i++) {
             Transition *transition = current->transitions[i];
             if (!visited[transition->to->index]) {
-                timetravel = currentTime + transition->time;
+                float timetravel = currentTime + transition->time;
                 if (press_button){
                     timetravel -= 1.5;
                 }
@@ -48,7 +48,7 @@ void findFastestPath(Vertex *current, Vertex *destination, int currentTime, int 
         for (int i = 0; i < current->num_edges; i++) {
             Edge *edge = current->edges[i];
             if (!visited[edge->to->index]) {
-                timetravel = currentTime + edge->time
+                float timetravel = currentTime + edge->time;
                 if (press_button){
                     timetravel -= 1.5;
                 }
